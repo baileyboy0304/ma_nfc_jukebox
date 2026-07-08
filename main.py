@@ -1,6 +1,6 @@
 """ma_nfc_jukebox entry point.
 
-Connects to Music Assistant and serves the web UI on port 9015 (Quart +
+Connects to Music Assistant and serves the web UI on port 9016 (Quart +
 Hypercorn). Designed to run as a Home Assistant add-on via run.sh, and
 directly for development.
 """

@@ -9,7 +9,7 @@
       <select class="guest-select" id="guestSelect"></select>
       <div class="guest-list" id="guestList"></div>
       <div class="button-row">
-        <a class="button secondary" href="/join">Add from NFC URL</a>
+        <a class="button secondary" href="join">Add from NFC URL</a>
       </div>
       <p class="soft-note">Swipe a guest left to delete them from this running add-on.</p>
     </aside>
@@ -22,7 +22,7 @@
             <h1 class="content-title" id="libraryTitle">Shared playlists</h1>
             <p class="content-subtitle" id="librarySubtitle">Choose a guest to see their playlists.</p>
           </div>
-          <a class="button secondary" href="/setup">Setup</a>
+          <a class="button secondary" href="setup">Setup</a>
         </div>
         <div class="playlist-grid" id="playlistGrid"></div>
       </div>
@@ -102,5 +102,5 @@
 <div class="toast" id="toast"></div>
 {% endblock %}
 {% block scripts %}
-<script src="/static/js/player.js?v={{ version }}"></script>
+<script src="static/js/player.js?v={{ version }}"></script>
 {% endblock %}

@@ -143,7 +143,9 @@ def create_app(controller: Controller) -> Quart:
 
     @app.route("/")
     async def index():
-        return redirect("/setup")
+        # The default sidebar/ingress landing page -- guests never see this
+        # (they always arrive via /join on the direct port).
+        return redirect("player")
 
     @app.route("/setup")
     async def setup():
@@ -157,7 +159,7 @@ def create_app(controller: Controller) -> Quart:
     async def join():
         cookie_guest = request.cookies.get(GUEST_COOKIE, "")
         if cookie_guest in controller.guests.guests:
-            return redirect("/player?" + urlencode({"guest": cookie_guest}))
+            return redirect("player?" + urlencode({"guest": cookie_guest}))
         if not credentials_configured():
             return await render_template("join_error.html", version=VERSION)
         return await render_template("join.html", version=VERSION)
@@ -174,16 +176,16 @@ def create_app(controller: Controller) -> Quart:
     async def callback():
         args = request.args
         state_data = controller.guests.pop_pending_state(args.get("state", ""))
-        return_to = (state_data or {}).get("return_to", "/player")
+        return_to = (state_data or {}).get("return_to", "player")
 
         if "error" in args or not state_data or not args.get("code"):
-            return redirect("/join")
+            return redirect("join")
 
         try:
             guest = controller.guests.complete_login(args.get("code"), state_data)
         except Exception:
             logger.exception("Guest Spotify login failed")
-            return redirect("/join")
+            return redirect("join")
 
         resp = redirect(return_to + "?" + urlencode({"guest": guest["id"]}))
         resp.set_cookie(GUEST_COOKIE, guest["id"], max_age=2592000, samesite="Lax")
@@ -274,6 +276,6 @@ def create_app(controller: Controller) -> Quart:
 
 def _start_guest_login(controller: Controller, mode: str, local_base: str):
     if not credentials_configured():
-        return redirect("/join")
-    url = controller.guests.authorize_url(local_base, mode=mode, return_to="/player")
+        return redirect("join")
+    url = controller.guests.authorize_url(local_base, mode=mode, return_to="player")
     return redirect(url)

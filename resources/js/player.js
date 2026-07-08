@@ -8,6 +8,13 @@ let isPaused = true;
 let currentProgressMs = 0;
 let currentDurationMs = 0;
 let lastProgressAt = 0;
+// True until a guest is explicitly picked (via ?guest= on load, or manually
+// from the dropdown/list) -- while true, this screen follows whichever
+// guest most recently connected (the shared sidebar/ingress "now showing"
+// view). A guest's own phone always arrives with ?guest= set, so it never
+// auto-follows someone else.
+let autoFollow = true;
+let lastGuestsSignature = '';
 
 const PLAY_ICON = '<svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L18.8 12z"></path></svg>';
 const PAUSE_ICON = '<svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>';
@@ -59,10 +66,15 @@ function updateControls() {
 }
 
 async function loadGuests() {
-  const data = await fetch('/jukebox/guests').then(r => r.json());
+  const data = await fetch('jukebox/guests').then(r => r.json());
   guests = data.guests || [];
   const requestedGuest = new URLSearchParams(window.location.search).get('guest') || '';
-  if (!activeGuestId) {
+  if (requestedGuest) {
+    autoFollow = false;
+  }
+
+  const previousActiveId = activeGuestId;
+  if (!activeGuestId || autoFollow) {
     activeGuestId = requestedGuest || data.selected_guest_id || (guests[0] && guests[0].id) || '';
   }
   if (!guests.some(g => g.id === activeGuestId)) {
@@ -72,8 +84,16 @@ async function loadGuests() {
   if (activeGuestId) {
     localStorage.setItem('mnj_guest', activeGuestId);
   }
-  renderGuests();
-  renderPlaylists();
+
+  const signature = JSON.stringify(guests.map(g => [g.id, g.display_name, g.playlists.length]));
+  if (signature !== lastGuestsSignature) {
+    lastGuestsSignature = signature;
+    renderGuests();
+  }
+  if (activeGuestId !== previousActiveId) {
+    showPlaylists();
+    renderPlaylists();
+  }
 }
 
 function renderGuests() {
@@ -96,6 +116,7 @@ function renderGuests() {
   }
 
   select.onchange = () => {
+    autoFollow = false;
     activeGuestId = select.value;
     activeGuest = guests.find(g => g.id === activeGuestId) || null;
     if (activeGuestId) {
@@ -128,6 +149,7 @@ function renderGuests() {
       </span>
     `;
     button.onclick = () => {
+      autoFollow = false;
       activeGuestId = guest.id;
       activeGuest = guests.find(g => g.id === activeGuestId) || null;
       localStorage.setItem('mnj_guest', activeGuestId);
@@ -173,7 +195,7 @@ function addSwipeDelete(row, content, guestId) {
 }
 
 async function deleteGuest(guestId) {
-  const res = await fetch('/jukebox/delete-guest', {
+  const res = await fetch('jukebox/delete-guest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ guest_id: guestId })
@@ -246,7 +268,7 @@ function showPlaylists() {
 
 async function openPlaylist(playlistId) {
   if (!activeGuest) return;
-  const data = await fetch(`/jukebox/tracks?guest_id=${encodeURIComponent(activeGuest.id)}&playlist_id=${encodeURIComponent(playlistId)}`).then(r => r.json());
+  const data = await fetch(`jukebox/tracks?guest_id=${encodeURIComponent(activeGuest.id)}&playlist_id=${encodeURIComponent(playlistId)}`).then(r => r.json());
   if (data.error) {
     toast(data.error, true);
     return;
@@ -325,7 +347,7 @@ async function refreshPlaybackState() {
     return;
   }
   try {
-    const state = await fetch(`/jukebox/playback-state?player_id=${encodeURIComponent(activePlayerId)}`).then(r => r.json());
+    const state = await fetch(`jukebox/playback-state?player_id=${encodeURIComponent(activePlayerId)}`).then(r => r.json());
     if (!state.error) {
       renderPlaybackState(state);
     }
@@ -342,7 +364,7 @@ function tickProgress() {
 
 async function refreshDevices() {
   const select = $('deviceSelect');
-  const data = await fetch('/jukebox/devices').then(r => r.json()).catch(() => ({ players: [] }));
+  const data = await fetch('jukebox/devices').then(r => r.json()).catch(() => ({ players: [] }));
   players = data.players || [];
   const previousValue = select.value || activePlayerId || data.preferred_player_id || '';
   select.innerHTML = '';
@@ -412,7 +434,7 @@ async function playRequest(payload) {
   }
 
   payload.player_id = activePlayerId;
-  const res = await fetch('/jukebox/play', {
+  const res = await fetch('jukebox/play', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -436,7 +458,7 @@ async function transportRequest(action) {
     return false;
   }
 
-  const res = await fetch('/jukebox/transport', {
+  const res = await fetch('jukebox/transport', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, player_id: activePlayerId })
@@ -469,7 +491,7 @@ async function previousTrack() {
 
 async function setVolume(value) {
   if (!activePlayerId) return;
-  const res = await fetch('/jukebox/volume', {
+  const res = await fetch('jukebox/volume', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: activePlayerId, volume_percent: Number(value) })
@@ -490,3 +512,4 @@ boot();
 setInterval(refreshPlaybackState, 1600);
 setInterval(tickProgress, 500);
 setInterval(refreshDevices, 10000);
+setInterval(loadGuests, 4000);

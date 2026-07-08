@@ -21,7 +21,7 @@
         Guests log in through a small public relay page that bounces them straight back to this add-on on your network -- no extra setup needed. Guests need to be on the <strong>same network</strong> as this add-on when they log in.
       </p>
       <div class="button-row">
-        <a class="button secondary" href="/player">Open player</a>
+        <a class="button secondary" href="player">Open player</a>
       </div>
     </div>
 
@@ -31,7 +31,7 @@
         Put this URL on the NFC tag. New guests log into Spotify once to share their playlists; known guests go straight to the player.
       </p>
       <div class="button-row">
-        <a class="button secondary" href="/join">Open /join</a>
+        <a class="button secondary" href="join">Open /join</a>
       </div>
       <p class="soft-note">{{ join_url }}</p>
       <p class="soft-note">Guest details are in memory only and clear when the add-on restarts.</p>
@@ -58,5 +58,5 @@
 </main>
 {% endblock %}
 {% block scripts %}
-<script src="/static/js/setup.js?v={{ version }}"></script>
+<script src="static/js/setup.js?v={{ version }}"></script>
 {% endblock %}

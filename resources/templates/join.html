@@ -11,13 +11,13 @@
   </section>
 
   <section class="setup-grid">
-    <a class="panel setup-card" href="/login-public" style="text-decoration: none;">
+    <a class="panel setup-card" href="login-public" style="text-decoration: none;">
       <h2 class="card-title">Show public playlists</h2>
       <p class="card-text">We'll only use this to identify your profile and show public playlists.</p>
       <div class="button-row"><span class="button">Continue</span></div>
     </a>
 
-    <a class="panel setup-card" href="/login-private" style="text-decoration: none;">
+    <a class="panel setup-card" href="login-private" style="text-decoration: none;">
       <h2 class="card-title">Include private playlists</h2>
       <p class="card-text">This also lets this screen show private playlists. Playback still uses the room's Music Assistant setup.</p>
       <div class="button-row"><span class="button secondary">Continue with private access</span></div>
@@ -34,5 +34,5 @@
 </main>
 {% endblock %}
 {% block scripts %}
-<script src="/static/js/join.js?v={{ version }}"></script>
+<script src="static/js/join.js?v={{ version }}"></script>
 {% endblock %}

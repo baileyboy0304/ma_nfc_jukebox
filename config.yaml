@@ -1,5 +1,5 @@
 name: "MA NFC Jukebox"
-version: "1.1.1"
+version: "1.2.0"
 slug: ma_nfc_jukebox
 description: "NFC-tag guest jukebox: guests share Spotify playlists, playback runs through Music Assistant on any player it controls."
 url: "https://github.com/baileyboy0304/ma_nfc_jukebox"
@@ -8,19 +8,20 @@ arch:
   - aarch64
 startup: application
 boot: auto
-# Networking: no ingress/sidebar panel -- ingress is only reachable by
-# someone already logged into Home Assistant, but guests tapping the NFC tag
-# never are, and the pages they need (/join, /callback, /player) have to go
-# through the direct port regardless (see docs/callback/index.html for how
-# the OAuth callback works). So everyone, including you, just uses the
-# direct port: http://<host>:9015.
-#
-# The web UI port (9015) is fixed to match the app's internal bind, so there
-# is no server_port option.
+# Networking: ingress gives YOU (already logged into Home Assistant) a
+# sidebar panel showing the live "current guest" screen. Guests tapping the
+# NFC tag are never logged into HA, so they always use the direct port
+# instead (see docs/callback/index.html for how the OAuth callback works).
+# All internal links/redirects are relative so the same pages work correctly
+# whether loaded through the ingress path prefix or the direct port.
+ingress: true
+ingress_port: 9016
+panel_icon: mdi:nfc-tap
+panel_title: NFC Jukebox
 ports:
-  9015/tcp: 9015
+  9016/tcp: 9016
 ports_description:
-  9015/tcp: "Web UI + guest Spotify OAuth callback"
+  9016/tcp: "Web UI + guest Spotify OAuth callback"
 map:
   - addon_config:rw
 init: false

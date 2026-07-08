@@ -170,7 +170,7 @@ class GuestStore:
         """Build the Spotify authorize URL for a guest login.
 
         ``local_base`` is the LAN address the guest's own browser used to
-        reach this add-on (e.g. ``http://192.168.1.129:9015``), read from
+        reach this add-on (e.g. ``http://192.168.1.129:9016``), read from
         their request. It gets baked into the ``state`` sent to Spotify so
         the public relay page (SPOTIFY_RELAY_URL) can bounce the guest
         straight back to it after login -- their phone must be on the same

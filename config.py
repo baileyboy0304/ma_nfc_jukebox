@@ -66,12 +66,12 @@ RESOURCES_DIR = Path(__file__).parent / "resources"
 # Server
 # --------------------------------------------------------------------------- #
 
-# Fixed at 9015 to match the add-on's ingress_port and container port in
+# Fixed at 9016 to match the add-on's ingress_port and container port in
 # config.yaml (same reasoning as NewLyricsJukebox's 9014 -- ingress_port is
 # static YAML and can't follow an option). Env override is for local dev only.
 SERVER = {
     "host": conf("server_host", "0.0.0.0"),
-    "port": _as_int(os.getenv("SERVER_PORT", "9015"), 9015),
+    "port": _as_int(os.getenv("SERVER_PORT", "9016"), 9016),
 }
 
 LOG_LEVEL = conf("log_level", "INFO")
