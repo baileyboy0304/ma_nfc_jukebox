@@ -12,18 +12,17 @@
 
   <section class="setup-grid">
     <div class="panel setup-card">
-      <h2 class="card-title">Music Assistant</h2>
+      <h2 class="card-title">Spotify app setup</h2>
       <p class="card-text">
-        Playback runs through Music Assistant, configured separately in this add-on's options (server URL, token, optional default player).
+        In your Spotify Developer Dashboard app, add this exact Redirect URI once:
+      </p>
+      <p class="soft-note">{{ redirect_uri }}</p>
+      <p class="card-text">
+        Guests log in through a small public relay page that bounces them straight back to this add-on on your network -- no extra setup needed. Guests need to be on the <strong>same network</strong> as this add-on when they log in.
       </p>
       <div class="button-row">
         <a class="button secondary" href="/player">Open player</a>
       </div>
-      {% if not external_base_url_set %}
-      <p class="soft-note error">
-        No external base URL is configured -- guest Spotify login will only work when the guest's browser is on this same machine. Set "External Base URL" (HTTPS, via your own reverse proxy) in the add-on options so guests can log in from their own phones.
-      </p>
-      {% endif %}
     </div>
 
     <div class="panel setup-card">

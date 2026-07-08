@@ -10,6 +10,7 @@ Playback SDK) removed since MA now owns playback.
 """
 
 import base64
+import json
 import logging
 import secrets
 import time
@@ -17,7 +18,7 @@ from urllib.parse import urlencode
 
 import requests
 
-from config import REDIRECT_URI, SPOTIFY
+from config import SPOTIFY, SPOTIFY_RELAY_URL
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,10 @@ def _get(access_token, url, params=None):
     return response.json()
 
 
-def _exchange_code_for_token(code):
-    data = {"grant_type": "authorization_code", "code": code, "redirect_uri": REDIRECT_URI}
+def _exchange_code_for_token(code, redirect_uri):
+    # redirect_uri must exactly match whatever was sent in the authorize
+    # step (the relay or external URL) -- Spotify checks it here too.
+    data = {"grant_type": "authorization_code", "code": code, "redirect_uri": redirect_uri}
     headers = _basic_auth_header()
     headers["Content-Type"] = "application/x-www-form-urlencoded"
     response = requests.post(
@@ -163,28 +166,44 @@ class GuestStore:
         for s in expired:
             self._pending_states.pop(s, None)
 
-    def authorize_url(self, mode="public", return_to="/player"):
+    def authorize_url(self, local_base, mode="public", return_to="/player"):
+        """Build the Spotify authorize URL for a guest login.
+
+        ``local_base`` is the LAN address the guest's own browser used to
+        reach this add-on (e.g. ``http://192.168.1.129:9015``), read from
+        their request. It gets baked into the ``state`` sent to Spotify so
+        the public relay page (SPOTIFY_RELAY_URL) can bounce the guest
+        straight back to it after login -- their phone must be on the same
+        network as this add-on for that final hop to reach it.
+        """
         self._cleanup_pending_states()
         scope = GUEST_PRIVATE_SCOPE if mode == "private" else GUEST_PUBLIC_SCOPE
-        state = secrets.token_urlsafe(24)
-        self._pending_states[state] = {"mode": mode, "created": time.time(), "return_to": return_to}
+        nonce = secrets.token_urlsafe(24)
+
+        envelope = json.dumps({"n": nonce, "b": local_base}).encode("utf-8")
+        state = base64.urlsafe_b64encode(envelope).decode("utf-8").rstrip("=")
+
+        self._pending_states[nonce] = {
+            "mode": mode, "created": time.time(), "return_to": return_to,
+            "redirect_uri": SPOTIFY_RELAY_URL,
+        }
         params = {
             "response_type": "code",
             "client_id": SPOTIFY["client_id"],
             "scope": scope,
-            "redirect_uri": REDIRECT_URI,
+            "redirect_uri": SPOTIFY_RELAY_URL,
             "state": state,
             "show_dialog": "true",
         }
         return "https://accounts.spotify.com/authorize?" + urlencode(params)
 
-    def pop_pending_state(self, state):
+    def pop_pending_state(self, nonce):
         self._cleanup_pending_states()
-        return self._pending_states.pop(state, None)
+        return self._pending_states.pop(nonce, None)
 
     def complete_login(self, code, state_data):
         mode = state_data.get("mode", "public")
-        token_data = _exchange_code_for_token(code)
+        token_data = _exchange_code_for_token(code, state_data["redirect_uri"])
         access_token = token_data["access_token"]
         me = _get(access_token, "https://api.spotify.com/v1/me")
         playlists = _current_user_playlists(access_token, mode)

@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 
 from quart import Quart, jsonify, make_response, redirect, render_template, request
 
-from config import EXTERNAL_BASE_URL, JOIN_URL, RESOURCES_DIR, VERSION
+from config import RESOURCES_DIR, SPOTIFY_RELAY_URL, VERSION
 from spotify import GuestStore, credentials_configured
 
 logger = logging.getLogger(__name__)
@@ -147,9 +147,10 @@ def create_app(controller: Controller) -> Quart:
 
     @app.route("/setup")
     async def setup():
+        local_base = request.host_url.rstrip("/")
         return await render_template(
-            "setup.html", version=VERSION, join_url=JOIN_URL,
-            external_base_url_set=bool(EXTERNAL_BASE_URL),
+            "setup.html", version=VERSION, join_url=f"{local_base}/join",
+            redirect_uri=SPOTIFY_RELAY_URL,
         )
 
     @app.route("/join")
@@ -163,11 +164,11 @@ def create_app(controller: Controller) -> Quart:
 
     @app.route("/login-public")
     async def login_public():
-        return _start_guest_login(controller, "public")
+        return _start_guest_login(controller, "public", request.host_url.rstrip("/"))
 
     @app.route("/login-private")
     async def login_private():
-        return _start_guest_login(controller, "private")
+        return _start_guest_login(controller, "private", request.host_url.rstrip("/"))
 
     @app.route("/callback")
     async def callback():
@@ -271,7 +272,8 @@ def create_app(controller: Controller) -> Quart:
     return app
 
 
-def _start_guest_login(controller: Controller, mode: str):
+def _start_guest_login(controller: Controller, mode: str, local_base: str):
     if not credentials_configured():
         return redirect("/join")
-    return redirect(controller.guests.authorize_url(mode=mode, return_to="/player"))
+    url = controller.guests.authorize_url(local_base, mode=mode, return_to="/player")
+    return redirect(url)

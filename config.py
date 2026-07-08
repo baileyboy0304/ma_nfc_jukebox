@@ -77,19 +77,19 @@ SERVER = {
 LOG_LEVEL = conf("log_level", "INFO")
 
 # --------------------------------------------------------------------------- #
-# Guest access / external URL
+# Guest access / OAuth callback
 # --------------------------------------------------------------------------- #
 
-# The public HTTPS base URL guests reach this add-on through (typically via a
-# reverse proxy in front of the add-on's direct port). Required for guests to
-# complete Spotify login from their own phones: Spotify only allows plain
-# "http://" redirect URIs for the 127.0.0.1 loopback address -- everything
-# else must be HTTPS. Leave blank for same-machine local testing only.
-EXTERNAL_BASE_URL = (conf("external_base_url", "") or "").strip().rstrip("/")
-
-BASE_URL = EXTERNAL_BASE_URL or f"http://127.0.0.1:{SERVER['port']}"
-REDIRECT_URI = f"{BASE_URL}/callback"
-JOIN_URL = f"{BASE_URL}/join"
+# Spotify only allows plain "http://" redirect URIs for the 127.0.0.1 loopback
+# address -- everything else must be HTTPS, which this add-on (running on a
+# plain LAN address) doesn't have. We route the OAuth callback through
+# SPOTIFY_RELAY_URL, a small static page hosted on GitHub Pages whose only
+# job is to bounce the guest's browser back down to the local address it
+# reached this add-on through (see docs/callback/index.html). This mirrors
+# the same trick Music Assistant's own Spotify provider setup uses -- zero
+# configuration, but the guest's phone must be on the same network as this
+# add-on at login time.
+SPOTIFY_RELAY_URL = "https://baileyboy0304.github.io/ma_nfc_jukebox/callback/"
 
 # --------------------------------------------------------------------------- #
 # Music Assistant (same keys as NewLyricsJukebox's config.py)

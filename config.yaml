@@ -9,8 +9,9 @@ arch:
 startup: application
 boot: auto
 # Networking: ingress makes the UI available in the HA sidebar. The mapped
-# port keeps direct access (http://<host>:9015) for guests on the LAN and for
-# a reverse proxy to forward external_base_url traffic to.
+# port keeps direct access (http://<host>:9015) for guests on the LAN --
+# guest Spotify login relies on the guest's phone reaching this port
+# directly (see docs/callback/index.html for how the OAuth callback works).
 #
 # The web UI port (9015) is fixed: ingress_port and the container side of the
 # ports mapping below must agree with the app's internal bind, so there is no
@@ -34,12 +35,6 @@ options:
   # --- Spotify (guest login only; playback runs through Music Assistant) ---
   spotify_client_id: ""
   spotify_client_secret: ""
-  # --- Guest access ---
-  # HTTPS URL guests reach this add-on through (via your own reverse proxy).
-  # Required for guests to complete Spotify login from their own phones --
-  # Spotify only allows plain "http://" redirect URIs for 127.0.0.1 loopback.
-  # Example: https://jukebox.example.com
-  external_base_url: ""
   # --- General ---
   log_level: "INFO"
 schema:
@@ -48,5 +43,4 @@ schema:
   music_assistant_player_id: str?
   spotify_client_id: str?
   spotify_client_secret: str?
-  external_base_url: str?
   log_level: "list(DEBUG|INFO|WARNING|ERROR)"

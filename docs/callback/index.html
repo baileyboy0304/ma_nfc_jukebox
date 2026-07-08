@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Returning to your jukebox&hellip;</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #101114;
+      color: #f7f7f8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      text-align: center;
+    }
+    p {
+      max-width: 420px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <p id="msg">Finishing Spotify login&hellip;</p>
+  </div>
+  <script>
+    // Static OAuth relay for ma_nfc_jukebox.
+    //
+    // Spotify requires an HTTPS redirect_uri, but this add-on normally runs
+    // on a plain local network address with no public HTTPS in front of it.
+    // This page is the one thing that DOES need to be public and HTTPS (it's
+    // hosted for free on GitHub Pages) -- its only job is to bounce the OAuth
+    // code back down to the guest's own local network, where their phone can
+    // still reach the add-on directly. Same trick Music Assistant's own
+    // Spotify provider setup uses (redirect via music-assistant.io/callback,
+    // "must be on the same subnet as the MA server").
+    //
+    // The `state` param is a base64url JSON envelope {n, b} that the add-on
+    // built before sending the guest to Spotify: `n` is a CSRF nonce the
+    // add-on already has recorded, `b` is the local base URL
+    // (e.g. http://192.168.1.129:9015) the guest's browser used to reach it.
+    // We never look inside `n` -- we just forward it back unchanged.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var code = params.get('code');
+      var error = params.get('error');
+      var state = params.get('state');
+      var msg = document.getElementById('msg');
+
+      function fail(text) {
+        msg.textContent = text;
+      }
+
+      if (!state) {
+        fail('Missing login state. Please close this tab and tap the NFC tag again.');
+        return;
+      }
+
+      var envelope;
+      try {
+        var padded = state.replace(/-/g, '+').replace(/_/g, '/');
+        while (padded.length % 4) {
+          padded += '=';
+        }
+        envelope = JSON.parse(atob(padded));
+      } catch (e) {
+        fail('This login link is invalid. Please close this tab and tap the NFC tag again.');
+        return;
+      }
+
+      if (!envelope || !envelope.b || !envelope.n) {
+        fail('This login link is invalid. Please close this tab and tap the NFC tag again.');
+        return;
+      }
+
+      var target = envelope.b.replace(/\/+$/, '') + '/callback?' +
+        'state=' + encodeURIComponent(envelope.n) +
+        (code ? '&code=' + encodeURIComponent(code) : '') +
+        (error ? '&error=' + encodeURIComponent(error) : '');
+
+      window.location.replace(target);
+    })();
+  </script>
+</body>
+</html>
