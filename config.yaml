@@ -1,0 +1,52 @@
+name: "MA NFC Jukebox"
+version: "0.1.0"
+slug: ma_nfc_jukebox
+description: "NFC-tag guest jukebox: guests share Spotify playlists, playback runs through Music Assistant on any player it controls."
+url: "https://github.com/baileyboy0304/ma_nfc_jukebox"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+# Networking: ingress makes the UI available in the HA sidebar. The mapped
+# port keeps direct access (http://<host>:9015) for guests on the LAN and for
+# a reverse proxy to forward external_base_url traffic to.
+#
+# The web UI port (9015) is fixed: ingress_port and the container side of the
+# ports mapping below must agree with the app's internal bind, so there is no
+# server_port option.
+ingress: true
+ingress_port: 9015
+panel_icon: mdi:nfc-tap
+panel_title: NFC Jukebox
+ports:
+  9015/tcp: 9015
+ports_description:
+  9015/tcp: "Web UI + guest Spotify OAuth callback"
+map:
+  - addon_config:rw
+init: false
+options:
+  # --- Music Assistant (same keys as the NewLyricsJukebox add-on) ---
+  music_assistant_base_url: ""
+  music_assistant_token: ""
+  music_assistant_player_id: ""
+  # --- Spotify (guest login only; playback runs through Music Assistant) ---
+  spotify_client_id: ""
+  spotify_client_secret: ""
+  # --- Guest access ---
+  # HTTPS URL guests reach this add-on through (via your own reverse proxy).
+  # Required for guests to complete Spotify login from their own phones --
+  # Spotify only allows plain "http://" redirect URIs for 127.0.0.1 loopback.
+  # Example: https://jukebox.example.com
+  external_base_url: ""
+  # --- General ---
+  log_level: "INFO"
+schema:
+  music_assistant_base_url: str?
+  music_assistant_token: str?
+  music_assistant_player_id: str?
+  spotify_client_id: str?
+  spotify_client_secret: str?
+  external_base_url: str?
+  log_level: "list(DEBUG|INFO|WARNING|ERROR)"

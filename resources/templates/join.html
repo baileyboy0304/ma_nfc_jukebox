@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Music Share Join{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="hero">
+    <div class="eyebrow"><span class="dot"></span> Guest music sharing</div>
+    <h1>Share your playlists with the room.</h1>
+    <p class="subtitle">
+      Choose the playlist access you're comfortable with. Playback runs through the room's Music Assistant setup, not your account.
+    </p>
+  </section>
+
+  <section class="setup-grid">
+    <a class="panel setup-card" href="/login-public" style="text-decoration: none;">
+      <h2 class="card-title">Show public playlists</h2>
+      <p class="card-text">We'll only use this to identify your profile and show public playlists.</p>
+      <div class="button-row"><span class="button">Continue</span></div>
+    </a>
+
+    <a class="panel setup-card" href="/login-private" style="text-decoration: none;">
+      <h2 class="card-title">Include private playlists</h2>
+      <p class="card-text">This also lets this screen show private playlists. Playback still uses the room's Music Assistant setup.</p>
+      <div class="button-row"><span class="button secondary">Continue with private access</span></div>
+    </a>
+  </section>
+
+  <section class="panel setup-card" style="margin-top: 18px;">
+    <h2 class="card-title">A quick reassurance</h2>
+    <p class="card-text">
+      This won't control your Spotify account, change your playlists, or use your password.
+      It just lets this screen show the playlists you choose to share.
+    </p>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/join.js?v={{ version }}"></script>
+{% endblock %}

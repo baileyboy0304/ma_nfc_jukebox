@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Music Share Setup{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="hero">
+    <div class="eyebrow"><span class="dot"></span> House playback setup</div>
+    <h1>Set up the room.</h1>
+    <p class="subtitle">
+      Music Assistant handles playback on any speaker it controls. Guests just tap the NFC tag and share playlists -- no playback control needed on their end.
+    </p>
+  </section>
+
+  <section class="setup-grid">
+    <div class="panel setup-card">
+      <h2 class="card-title">Music Assistant</h2>
+      <p class="card-text">
+        Playback runs through Music Assistant, configured separately in this add-on's options (server URL, token, optional default player).
+      </p>
+      <div class="button-row">
+        <a class="button secondary" href="/player">Open player</a>
+      </div>
+      {% if not external_base_url_set %}
+      <p class="soft-note error">
+        No external base URL is configured -- guest Spotify login will only work when the guest's browser is on this same machine. Set "External Base URL" (HTTPS, via your own reverse proxy) in the add-on options so guests can log in from their own phones.
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="panel setup-card">
+      <h2 class="card-title">Guest NFC URL</h2>
+      <p class="card-text">
+        Put this URL on the NFC tag. New guests log into Spotify once to share their playlists; known guests go straight to the player.
+      </p>
+      <div class="button-row">
+        <a class="button secondary" href="/join">Open /join</a>
+      </div>
+      <p class="soft-note">{{ join_url }}</p>
+      <p class="soft-note">Guest details are in memory only and clear when the add-on restarts.</p>
+    </div>
+  </section>
+
+  <section class="panel setup-card" style="margin-top: 18px;">
+    <h2 class="card-title">Current status</h2>
+    <div class="status-list">
+      <div class="status-row">
+        <div class="status-label">Music Assistant</div>
+        <div class="status-value" id="maStatus">Loading...</div>
+      </div>
+      <div class="status-row">
+        <div class="status-label">Players</div>
+        <div class="status-value" id="playerCount">-</div>
+      </div>
+      <div class="status-row">
+        <div class="status-label">Guests</div>
+        <div class="status-value" id="guestCount">-</div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/setup.js?v={{ version }}"></script>
+{% endblock %}

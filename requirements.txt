@@ -1,0 +1,11 @@
+# ma_nfc_jukebox runtime dependencies
+
+# Web server (ASGI)
+quart>=0.20.0
+hypercorn>=0.14.3
+
+# HTTP (Spotify Web API for guest playlist browsing)
+requests>=2.31.0
+
+# Music Assistant integration
+music-assistant-client>=1.4.0
