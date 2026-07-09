@@ -13,12 +13,30 @@ from urllib.parse import urlencode
 
 from quart import Quart, jsonify, make_response, redirect, render_template, request
 
-from config import RESOURCES_DIR, SPOTIFY_RELAY_URL, VERSION
+from config import RESOURCES_DIR, SERVER, SPOTIFY_RELAY_URL, VERSION
 from spotify import GuestStore, credentials_configured
 
 logger = logging.getLogger(__name__)
 
 GUEST_COOKIE = "mnj_guest"
+
+
+def _local_base(req) -> str:
+    """The add-on's own direct-port base URL, as reachable by a guest on the
+    network -- e.g. ``http://192.168.1.129:9016``.
+
+    Home Assistant's ingress proxy forwards the browser's ORIGINAL Host
+    header (HA's own port, e.g. :8123) rather than rewriting it to this
+    add-on's port, so ``request.host_url`` is only trustworthy when this
+    page was loaded directly (never via ingress). Detect ingress via the
+    ``X-Ingress-Path`` header Supervisor adds to every proxied request, and
+    in that case substitute this add-on's real, fixed port -- the hostname
+    portion is still correct either way, only the port is wrong.
+    """
+    if req.headers.get("X-Ingress-Path"):
+        host = req.host.split(":")[0]
+        return f"http://{host}:{SERVER['port']}"
+    return req.host_url.rstrip("/")
 
 
 class AppError(Exception):
@@ -149,7 +167,7 @@ def create_app(controller: Controller) -> Quart:
 
     @app.route("/setup")
     async def setup():
-        local_base = request.host_url.rstrip("/")
+        local_base = _local_base(request)
         return await render_template(
             "setup.html", version=VERSION, join_url=f"{local_base}/join",
             redirect_uri=SPOTIFY_RELAY_URL,
@@ -166,11 +184,11 @@ def create_app(controller: Controller) -> Quart:
 
     @app.route("/login-public")
     async def login_public():
-        return _start_guest_login(controller, "public", request.host_url.rstrip("/"))
+        return _start_guest_login(controller, "public", _local_base(request))
 
     @app.route("/login-private")
     async def login_private():
-        return _start_guest_login(controller, "private", request.host_url.rstrip("/"))
+        return _start_guest_login(controller, "private", _local_base(request))
 
     @app.route("/callback")
     async def callback():
