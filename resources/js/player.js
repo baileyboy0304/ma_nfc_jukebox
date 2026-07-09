@@ -394,9 +394,11 @@ async function refreshDevices() {
     select.appendChild(option);
   }
 
-  // Keep the current choice if it's still valid; otherwise fall back to the
-  // configured default player, then the first available one.
-  const chosen = [activePlayerId, data.preferred_player_id, available[0].player_id]
+  // Keep the current choice if it's still valid; otherwise the speaker used
+  // last time (remembered per browser), then the configured default player,
+  // then the first available one.
+  const remembered = localStorage.getItem('mnj_player') || '';
+  const chosen = [activePlayerId, remembered, data.preferred_player_id, available[0].player_id]
     .find(id => id && available.some(p => p.player_id === id));
   select.value = chosen;
   activePlayerId = chosen;
@@ -405,6 +407,9 @@ async function refreshDevices() {
 
 function selectDevice(playerId) {
   activePlayerId = playerId;
+  if (playerId) {
+    localStorage.setItem('mnj_player', playerId);
+  }
   updateControls();
   refreshPlaybackState();
 }

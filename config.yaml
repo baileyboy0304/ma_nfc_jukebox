@@ -1,5 +1,5 @@
 name: "MA NFC Jukebox"
-version: "1.2.2"
+version: "1.2.3"
 slug: ma_nfc_jukebox
 description: "NFC-tag guest jukebox: guests share Spotify playlists, playback runs through Music Assistant on any player it controls."
 url: "https://github.com/baileyboy0304/ma_nfc_jukebox"
