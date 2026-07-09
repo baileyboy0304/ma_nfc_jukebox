@@ -447,6 +447,13 @@ h1 {
   background: var(--accent-strong);
 }
 
+.playlist-play svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  display: block;
+}
+
 .art {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -631,59 +638,83 @@ h1 {
 
 .transport {
   display: grid;
-  gap: 22px;
+  gap: 20px;
   justify-items: center;
+  width: 100%;
 }
 
-.transport-buttons {
+/* Transport row: prev/play/next centred, with reserved clusters pinned left and
+   right (mirrors NewLyricsJukebox, where those hold lyric-sync and provider
+   controls). Kept empty here but sized so future controls drop in cleanly. */
+.controls-row {
+  position: relative;
+  width: min(100%, 760px);
   display: flex;
   align-items: center;
-  gap: 26px;
+  justify-content: center;
 }
 
-.round-button {
-  width: 42px;
-  height: 42px;
-  border: 0;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  color: rgba(255,255,255,0.72);
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.ctrl-side {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.ctrl-side-left { left: 0; }
+.ctrl-side-right { right: 0; }
+
+/* Lucide stroke-based icons, matching Music Assistant / NewLyricsJukebox. */
+.ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
-  transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.round-button.primary {
-  width: 66px;
-  height: 66px;
-  background: var(--text);
-  color: #111217;
-  font-weight: 900;
-}
-
-.round-button:hover:not(:disabled) {
-  transform: scale(1.08);
-  color: #ffffff;
-}
-
-.round-button.primary:hover:not(:disabled) {
-  background: #ffffff;
-}
-
-.transport-icon {
-  width: 24px;
-  height: 24px;
-  display: block;
-  fill: currentColor;
-}
-
-.round-button.primary .transport-icon {
+.ctrl-btn svg {
   width: 30px;
   height: 30px;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.15s ease;
 }
 
-.round-button:disabled {
+.ctrl-btn:not(.ctrl-main):hover:not(:disabled) svg { stroke: var(--accent); }
+
+.ctrl-main {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.ctrl-main:hover:not(:disabled) { filter: brightness(1.1); }
+.ctrl-main:active:not(:disabled) { transform: scale(0.94); }
+
+.ctrl-main svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: #111217;
+}
+
+.ctrl-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -720,39 +751,128 @@ h1 {
 
 .player-tools {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 22px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
   min-width: 0;
 }
 
-.device-select {
-  min-width: 248px;
+/* Speaker / player-select chip -> opens the picker modal (mirrors NLJ). */
+.speaker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   max-width: 340px;
-  height: 48px;
-  border: 1px solid var(--line);
+  padding: 0.55rem 1.1rem;
+  border: none;
   border-radius: 999px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text);
-  padding: 0 16px;
-  font-weight: 680;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.device-select option {
-  color: #111217;
+.speaker-chip:hover { background: rgba(114, 213, 114, 0.22); }
+
+.speaker-chip svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--accent);
+  flex-shrink: 0;
+}
+
+.speaker-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .volume {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   color: var(--muted);
-  font-size: 14px;
+}
+
+.volume-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
 }
 
 .volume input {
-  width: 150px;
+  width: 160px;
+  accent-color: var(--accent);
 }
+
+.volume input:disabled { opacity: 0.4; }
+
+/* Player-select modal (mirrors NewLyricsJukebox). */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.open { display: flex; }
+
+.modal-card {
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.5rem;
+  width: min(440px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+
+.modal-card h2 { margin: 0 0 0.75rem; font-size: 20px; }
+
+.player-list { display: grid; gap: 2px; }
+
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.5rem;
+  border-radius: 12px;
+  border: 0;
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-row:hover { background: rgba(255,255,255,0.06); }
+.player-row.active { background: rgba(114, 213, 114, 0.13); }
+
+.player-row-info { flex: 1; min-width: 0; }
+.player-row-name { font-weight: 640; }
+.player-row-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.player-row-check {
+  color: var(--accent);
+  font-weight: 900;
+  opacity: 0;
+}
+
+.player-row.active .player-row-check { opacity: 1; }
 
 .toast {
   position: fixed;
@@ -794,8 +914,11 @@ h1 {
   }
 
   .player-tools {
+    align-items: flex-start;
+  }
+
+  .controls-row {
     justify-content: flex-start;
-    flex-wrap: wrap;
   }
 
   .bottom-inner {

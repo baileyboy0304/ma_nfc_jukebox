@@ -57,31 +57,34 @@
     </div>
 
     <div class="transport">
-      <div class="transport-buttons">
-        <button class="round-button" type="button" title="Shuffle" aria-label="Shuffle" disabled>
-          <svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M17.59 5.41 19.17 7H17a5.5 5.5 0 0 0-4.58 2.45l-.72 1.08 1.66 1.11.72-1.08A3.5 3.5 0 0 1 17 9h2.17l-1.58 1.59L19 12l4-4-4-4-1.41 1.41zM4 7h2a3.5 3.5 0 0 1 2.91 1.56l.74 1.11 1.66-1.11-.74-1.11A5.5 5.5 0 0 0 6 5H4v2zm7.7 6.47-1.66-1.11-.74 1.08A3.5 3.5 0 0 1 6.39 15H4v2h2.39a5.5 5.5 0 0 0 4.56-2.42l.75-1.11zM19.17 17H17a3.5 3.5 0 0 1-2.91-1.56l-.73-1.1-1.66 1.11.73 1.1A5.5 5.5 0 0 0 17 19h2.17l-1.58 1.59L19 22l4-4-4-4-1.41 1.41L19.17 17z"></path>
-          </svg>
-        </button>
-        <button class="round-button" type="button" onclick="previousTrack()" title="Previous" aria-label="Previous track">
-          <svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 5h2v14H6zM18.5 5.4v13.2L9 12z"></path>
-          </svg>
-        </button>
-        <button class="round-button primary" id="playPause" type="button" onclick="togglePlay()" title="Play/Pause" aria-label="Play or pause" disabled>
-          <span id="playPauseIcon"></span>
-        </button>
-        <button class="round-button" type="button" onclick="nextTrack()" title="Next" aria-label="Next track">
-          <svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M16 5h2v14h-2zM5.5 18.6V5.4L15 12z"></path>
-          </svg>
-        </button>
-        <button class="round-button" type="button" title="Repeat" aria-label="Repeat" disabled>
-          <svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 7h9.17l-1.58-1.59L16 4l4 4-4 4-1.41-1.41L16.17 9H7a3 3 0 0 0-3 3v1H2v-1a5 5 0 0 1 5-5zm10 10H7.83l1.58 1.59L8 20l-4-4 4-4 1.41 1.41L7.83 15H17a3 3 0 0 0 3-3v-1h2v1a5 5 0 0 1-5 5z"></path>
-          </svg>
-        </button>
+      <div class="controls-row">
+        <!-- Reserved: mirrors NewLyricsJukebox's lyric-sync cluster. Left empty
+             on purpose so lyric controls can be dropped in later without a
+             re-layout. -->
+        <div class="ctrl-side ctrl-side-left" aria-hidden="true"></div>
+
+        <div class="controls">
+          <button id="btnPrev" class="ctrl-btn" type="button" onclick="previousTrack()" title="Previous" aria-label="Previous track">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z" />
+              <path d="M3 20V4" />
+            </svg>
+          </button>
+          <button id="playPause" class="ctrl-btn ctrl-main" type="button" onclick="togglePlay()" title="Play/Pause" aria-label="Play or pause" disabled>
+            <svg id="playPauseIcon" viewBox="0 0 24 24" aria-hidden="true"></svg>
+          </button>
+          <button id="btnNext" class="ctrl-btn" type="button" onclick="nextTrack()" title="Next" aria-label="Next track">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 4v16" />
+              <path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Reserved: mirrors NewLyricsJukebox's lyrics-provider cycle. -->
+        <div class="ctrl-side ctrl-side-right" aria-hidden="true"></div>
       </div>
+
       <div class="progress-row">
         <span class="progress-time" id="elapsedTime">0:00</span>
         <div class="progress-line"><div class="progress-fill" id="progressFill"></div></div>
@@ -90,12 +93,25 @@
     </div>
 
     <div class="player-tools">
-      <select class="device-select" id="deviceSelect" onchange="selectDevice(this.value)"></select>
+      <button id="speakerChip" class="speaker-chip" type="button" onclick="openPlayerModal()" title="Select speaker">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12,12A3,3 0 0,0 9,15A3,3 0 0,0 12,18A3,3 0 0,0 15,15A3,3 0 0,0 12,12M12,20A5,5 0 0,1 7,15A5,5 0 0,1 12,10A5,5 0 0,1 17,15A5,5 0 0,1 12,20M12,4A1,1 0 0,1 13,5A1,1 0 0,1 12,6A1,1 0 0,1 11,5A1,1 0 0,1 12,4M17,2H7C5.89,2 5,2.89 5,4V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V4C19,2.89 18.1,2 17,2Z" /></svg>
+        <span id="speakerName">Select speaker</span>
+      </button>
       <label class="volume">
-        Volume
-        <input id="volume" type="range" min="0" max="100" value="70" oninput="setVolume(this.value)" disabled>
+        <svg class="volume-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+          <path d="M16 9a5 5 0 0 1 0 6" />
+        </svg>
+        <input id="volume" type="range" min="0" max="100" value="0" oninput="setVolume(this.value)" disabled>
       </label>
     </div>
+  </div>
+</div>
+
+<div id="playerModal" class="modal" onclick="closePlayerModalBackdrop(event)">
+  <div class="modal-card">
+    <h2>Select speaker</h2>
+    <div id="playerList" class="player-list"></div>
   </div>
 </div>
 

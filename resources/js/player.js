@@ -15,9 +15,11 @@ let lastProgressAt = 0;
 // auto-follows someone else.
 let autoFollow = true;
 let lastGuestsSignature = '';
+let lastVolumeInteraction = 0;
 
-const PLAY_ICON = '<svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L18.8 12z"></path></svg>';
-const PAUSE_ICON = '<svg class="transport-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>';
+// Lucide icon geometry (matches Music Assistant / NewLyricsJukebox).
+const PLAY_ICON = '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />';
+const PAUSE_ICON = '<rect x="14" y="3" width="5" height="18" rx="1" /><rect x="5" y="3" width="5" height="18" rx="1" />';
 
 function $(id) {
   return document.getElementById(id);
@@ -60,7 +62,10 @@ function playbackReady() {
 }
 
 function updateControls() {
-  $('playPause').disabled = !playbackReady();
+  const ready = playbackReady();
+  $('playPause').disabled = !ready;
+  $('btnPrev').disabled = !ready;
+  $('btnNext').disabled = !ready;
   $('volume').disabled = !activePlayerId;
   $('playPauseIcon').innerHTML = isPaused ? PLAY_ICON : PAUSE_ICON;
 }
@@ -362,46 +367,57 @@ function tickProgress() {
   updateProgress(Math.min(currentDurationMs, currentProgressMs + elapsed), currentDurationMs);
 }
 
-async function refreshDevices() {
-  const select = $('deviceSelect');
-  // Don't rebuild the list out from under the user mid-choice.
-  if (document.activeElement === select) return;
-
-  const data = await fetch('jukebox/devices').then(r => r.json()).catch(() => ({ players: [] }));
-  players = data.players || [];
+function availablePlayers() {
   // Unavailable players can't accept commands (MA rejects them with
   // "Player X is not available") -- don't offer them at all.
-  const available = players
+  return players
     .filter(p => p.available !== false)
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}
 
-  select.innerHTML = '';
+function activePlayer() {
+  return players.find(p => p.player_id === activePlayerId) || null;
+}
+
+function updateSpeakerName(name) {
+  $('speakerName').textContent = name || 'Select speaker';
+}
+
+// Reflect the selected player's real volume in the slider, unless the user is
+// actively adjusting it (dragging, or within a moment of their last change).
+function syncVolume(player) {
+  const slider = $('volume');
+  if (document.activeElement === slider) return;
+  if (Date.now() - lastVolumeInteraction < 2500) return;
+  if (player && typeof player.volume_level === 'number') {
+    slider.value = player.volume_level;
+  }
+}
+
+async function refreshDevices() {
+  const data = await fetch('jukebox/devices').then(r => r.json()).catch(() => ({ players: [] }));
+  players = data.players || [];
+  const available = availablePlayers();
 
   if (!available.length) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = data.connected ? 'No players available' : 'Music Assistant not connected';
-    select.appendChild(option);
     activePlayerId = '';
+    updateSpeakerName(data.connected ? 'No speakers available' : 'Music Assistant offline');
     updateControls();
     return;
-  }
-
-  for (const p of available) {
-    const option = document.createElement('option');
-    option.value = p.player_id;
-    option.textContent = p.name;
-    select.appendChild(option);
   }
 
   // Keep the current choice if it's still valid; otherwise the speaker used
   // last time (remembered per browser), then the configured default player,
   // then the first available one.
   const remembered = localStorage.getItem('mnj_player') || '';
-  const chosen = [activePlayerId, remembered, data.preferred_player_id, available[0].player_id]
+  activePlayerId = [activePlayerId, remembered, data.preferred_player_id, available[0].player_id]
     .find(id => id && available.some(p => p.player_id === id));
-  select.value = chosen;
-  activePlayerId = chosen;
+
+  const player = activePlayer();
+  updateSpeakerName(player ? player.name : 'Select speaker');
+  syncVolume(player);
+  // Reflect the current selection live if the picker modal is open.
+  if ($('playerModal').classList.contains('open')) renderPlayerList();
   updateControls();
 }
 
@@ -410,8 +426,58 @@ function selectDevice(playerId) {
   if (playerId) {
     localStorage.setItem('mnj_player', playerId);
   }
+  const player = activePlayer();
+  updateSpeakerName(player ? player.name : 'Select speaker');
+  syncVolume(player);
   updateControls();
   refreshPlaybackState();
+}
+
+// ---------- speaker picker modal ----------
+
+function openPlayerModal() {
+  renderPlayerList();
+  $('playerModal').classList.add('open');
+}
+
+function closePlayerModal() {
+  $('playerModal').classList.remove('open');
+}
+
+function closePlayerModalBackdrop(event) {
+  if (event.target.id === 'playerModal') closePlayerModal();
+}
+
+function renderPlayerList() {
+  const list = $('playerList');
+  list.innerHTML = '';
+  const available = availablePlayers();
+
+  if (!available.length) {
+    const empty = document.createElement('div');
+    empty.className = 'player-row-meta';
+    empty.textContent = 'No speakers are available right now.';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const p of available) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'player-row' + (p.player_id === activePlayerId ? ' active' : '');
+    row.innerHTML = `
+      <span class="player-row-info">
+        <span class="player-row-name">${esc(p.name)}</span>
+        ${p.is_playing ? '<span class="player-row-meta">Playing</span>' : ''}
+      </span>
+      <span class="player-row-check">&#10003;</span>
+    `;
+    row.onclick = () => {
+      selectDevice(p.player_id);
+      closePlayerModal();
+    };
+    list.appendChild(row);
+  }
 }
 
 async function playCurrentPlaylist() {
@@ -515,6 +581,11 @@ async function previousTrack() {
 
 async function setVolume(value) {
   if (!activePlayerId) return;
+  // Mark the interaction so refreshDevices doesn't snap the slider back to the
+  // (slightly stale) reported level while the user is still adjusting it.
+  lastVolumeInteraction = Date.now();
+  const player = activePlayer();
+  if (player) player.volume_level = Number(value);
   const res = await fetch('jukebox/volume', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
