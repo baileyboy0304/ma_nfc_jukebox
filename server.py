@@ -111,12 +111,23 @@ class Controller:
         if not self.ma.connected:
             raise AppError("Music Assistant is not connected.", 503)
 
-        # Tapping a single track plays THAT track; the "Play playlist" button
-        # sends only the playlist. (We deliberately don't play the playlist with
-        # the track as a start_item -- Music Assistant can't resolve an arbitrary
-        # track uri as a playlist start point and returns an empty queue.)
-        uri = _to_ma_uri(track_uri or context_uri)
-        error = await self.ma.play_media(player_id, uri)
+        # Tapping a track inside a playlist plays the PLAYLIST starting at that
+        # track, so the rest of the playlist continues in the queue. Music
+        # Assistant matches the start item by the bare provider item id (the
+        # Spotify track id), not a full uri. Tapping the "Play playlist" button
+        # sends only the playlist (start from the top); a bare track with no
+        # playlist context just plays that track.
+        if context_uri and track_uri:
+            media = _to_ma_uri(context_uri)
+            start_item = track_uri.split(":")[-1]      # spotify:track:<id> -> <id>
+        elif track_uri:
+            media = _to_ma_uri(track_uri)
+            start_item = None
+        else:
+            media = _to_ma_uri(context_uri)
+            start_item = None
+
+        error = await self.ma.play_media(player_id, media, start_item=start_item)
         if error:
             # Playback runs through Music Assistant's OWN Spotify account, so a
             # guest playlist/track that account can't see resolves to zero tracks.

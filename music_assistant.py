@@ -219,7 +219,7 @@ class MusicAssistant:
             return self.NOT_CONNECTED
         return await self._safe(self._client.players.volume_set, player_id, int(volume_percent))
 
-    async def play_media(self, player_id: str, uri: str) -> Optional[str]:
+    async def play_media(self, player_id: str, uri: str, start_item: Optional[str] = None) -> Optional[str]:
         """Replace the player's queue with the given Music Assistant media uri
         and start playing. Returns None on success or an error message.
 
@@ -227,6 +227,14 @@ class MusicAssistant:
         or ``spotify://track/<id>`` -- MA resolves it via whichever Spotify
         provider it has configured, lazily if it isn't already in its library.
         This plays under MA's own Spotify account, not the guest's.
+
+        ``start_item`` (when ``uri`` is a playlist) is the item to start the
+        queue at, so the rest of the playlist continues after it. Music
+        Assistant matches it against each playlist track's ``item_id`` or full
+        ``uri``, so it must be the BARE provider item id (e.g. the Spotify
+        track id ``4pbJq...``), NOT a ``spotify://track/...`` uri -- the
+        expanded tracks carry the provider *instance* id in their uri, which a
+        domain-form uri won't match.
         """
         if not self._client:
             return self.NOT_CONNECTED
@@ -234,11 +242,11 @@ class MusicAssistant:
         queue_id = await self._active_queue_id(player_id)
         try:
             await self._client.player_queues.play_media(
-                queue_id, uri, option=QueueOption.REPLACE,
+                queue_id, uri, option=QueueOption.REPLACE, start_item=start_item,
             )
             return None
         except Exception as exc:  # noqa: BLE001
-            logger.warning("play_media failed for %s: %s", uri, exc)
+            logger.warning("play_media failed for %s (start_item=%s): %s", uri, start_item, exc)
             return str(exc) or "Playback could not start."
 
     async def _safe(self, fn, *args) -> Optional[str]:
