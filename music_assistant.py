@@ -182,24 +182,44 @@ class MusicAssistant:
 
     NOT_CONNECTED = "Music Assistant is not connected."
 
+    async def _active_queue_id(self, player_id: str) -> str:
+        """Resolve the active queue for a player. Playback here is always
+        queue-based (play_media builds a queue), so transport/skip should drive
+        the QUEUE, not the player -- a player-level skip can tear down and
+        restart the stream (a fresh session, which some speakers announce with
+        a beep), whereas a queue-level skip advances within the running stream."""
+        try:
+            active = await self._client.player_queues.get_active_queue(player_id)
+            return active.queue_id if hasattr(active, "queue_id") else (active or player_id)
+        except Exception:  # noqa: BLE001
+            return player_id
+
     async def play(self, player_id: str) -> Optional[str]:
-        return await self._safe(self._client.players.play, player_id) if self._client else self.NOT_CONNECTED
+        if not self._client:
+            return self.NOT_CONNECTED
+        return await self._safe(self._client.player_queues.play, await self._active_queue_id(player_id))
 
     async def pause(self, player_id: str) -> Optional[str]:
-        return await self._safe(self._client.players.pause, player_id) if self._client else self.NOT_CONNECTED
+        if not self._client:
+            return self.NOT_CONNECTED
+        return await self._safe(self._client.player_queues.pause, await self._active_queue_id(player_id))
 
     async def next(self, player_id: str) -> Optional[str]:
-        return await self._safe(self._client.players.next_track, player_id) if self._client else self.NOT_CONNECTED
+        if not self._client:
+            return self.NOT_CONNECTED
+        return await self._safe(self._client.player_queues.next, await self._active_queue_id(player_id))
 
     async def previous(self, player_id: str) -> Optional[str]:
-        return await self._safe(self._client.players.previous_track, player_id) if self._client else self.NOT_CONNECTED
+        if not self._client:
+            return self.NOT_CONNECTED
+        return await self._safe(self._client.player_queues.previous, await self._active_queue_id(player_id))
 
     async def set_volume(self, player_id: str, volume_percent: int) -> Optional[str]:
         if not self._client:
             return self.NOT_CONNECTED
         return await self._safe(self._client.players.volume_set, player_id, int(volume_percent))
 
-    async def play_media(self, player_id: str, uri: str, start_item: Optional[str] = None) -> Optional[str]:
+    async def play_media(self, player_id: str, uri: str) -> Optional[str]:
         """Replace the player's queue with the given Music Assistant media uri
         and start playing. Returns None on success or an error message.
 
@@ -211,14 +231,10 @@ class MusicAssistant:
         if not self._client:
             return self.NOT_CONNECTED
         from music_assistant_models.enums import QueueOption
-        try:
-            active = await self._client.player_queues.get_active_queue(player_id)
-            queue_id = active.queue_id if hasattr(active, "queue_id") else (active or player_id)
-        except Exception:  # noqa: BLE001
-            queue_id = player_id
+        queue_id = await self._active_queue_id(player_id)
         try:
             await self._client.player_queues.play_media(
-                queue_id, uri, option=QueueOption.REPLACE, start_item=start_item,
+                queue_id, uri, option=QueueOption.REPLACE,
             )
             return None
         except Exception as exc:  # noqa: BLE001

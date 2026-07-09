@@ -111,16 +111,19 @@ class Controller:
         if not self.ma.connected:
             raise AppError("Music Assistant is not connected.", 503)
 
-        uri = _to_ma_uri(context_uri or track_uri)
-        start_item = _to_ma_uri(track_uri) if (context_uri and track_uri) else None
-        error = await self.ma.play_media(player_id, uri, start_item=start_item)
+        # Tapping a single track plays THAT track; the "Play playlist" button
+        # sends only the playlist. (We deliberately don't play the playlist with
+        # the track as a start_item -- Music Assistant can't resolve an arbitrary
+        # track uri as a playlist start point and returns an empty queue.)
+        uri = _to_ma_uri(track_uri or context_uri)
+        error = await self.ma.play_media(player_id, uri)
         if error:
             # Playback runs through Music Assistant's OWN Spotify account, so a
-            # guest playlist that account can't see resolves to zero tracks.
+            # guest playlist/track that account can't see resolves to zero tracks.
             if "no playable items" in error.lower():
                 error = (
-                    "The house music system can't access this playlist. "
-                    "It may be private -- ask the guest to make it public, or pick another playlist."
+                    "The house music system can't access this. "
+                    "It may be private -- ask the guest to make it public, or pick something else."
                 )
             raise AppError(error, 502)
         return {"ok": True}
