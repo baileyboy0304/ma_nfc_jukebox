@@ -364,12 +364,20 @@ function tickProgress() {
 
 async function refreshDevices() {
   const select = $('deviceSelect');
+  // Don't rebuild the list out from under the user mid-choice.
+  if (document.activeElement === select) return;
+
   const data = await fetch('jukebox/devices').then(r => r.json()).catch(() => ({ players: [] }));
   players = data.players || [];
-  const previousValue = select.value || activePlayerId || data.preferred_player_id || '';
+  // Unavailable players can't accept commands (MA rejects them with
+  // "Player X is not available") -- don't offer them at all.
+  const available = players
+    .filter(p => p.available !== false)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
   select.innerHTML = '';
 
-  if (!players.length) {
+  if (!available.length) {
     const option = document.createElement('option');
     option.value = '';
     option.textContent = data.connected ? 'No players available' : 'Music Assistant not connected';
@@ -379,21 +387,19 @@ async function refreshDevices() {
     return;
   }
 
-  for (const p of players) {
+  for (const p of available) {
     const option = document.createElement('option');
     option.value = p.player_id;
-    option.textContent = p.name + (p.available === false ? ' (unavailable)' : '');
-    option.selected = p.player_id === previousValue;
+    option.textContent = p.name;
     select.appendChild(option);
   }
 
-  if (previousValue && [...select.options].some(option => option.value === previousValue)) {
-    select.value = previousValue;
-    activePlayerId = previousValue;
-  } else {
-    select.selectedIndex = 0;
-    activePlayerId = select.value;
-  }
+  // Keep the current choice if it's still valid; otherwise fall back to the
+  // configured default player, then the first available one.
+  const chosen = [activePlayerId, data.preferred_player_id, available[0].player_id]
+    .find(id => id && available.some(p => p.player_id === id));
+  select.value = chosen;
+  activePlayerId = chosen;
   updateControls();
 }
 
@@ -427,29 +433,42 @@ async function playTrack(track) {
   });
 }
 
+let playPending = false;
+
 async function playRequest(payload) {
   if (!activePlayerId) {
     toast('Choose a speaker first.', true);
     return;
   }
+  // A play request can take a couple of seconds while Music Assistant
+  // resolves the playlist -- ignore double-taps instead of firing twice.
+  if (playPending) return;
+  playPending = true;
+  toast('Starting playback…');
 
-  payload.player_id = activePlayerId;
-  const res = await fetch('jukebox/play', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    toast(data.error || 'Playback could not start.', true);
-    return;
+  try {
+    payload.player_id = activePlayerId;
+    const res = await fetch('jukebox/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast(data.error || 'Playback could not start.', true);
+      return;
+    }
+
+    $('nowTitle').textContent = payload.display_name || 'Playing';
+    $('nowSubtitle').textContent = payload.artists || 'Music Share';
+    $('nowArt').src = payload.image || '';
+    toast('Playing.');
+    setTimeout(refreshPlaybackState, 700);
+  } catch (err) {
+    toast('Playback could not start.', true);
+  } finally {
+    playPending = false;
   }
-
-  $('nowTitle').textContent = payload.display_name || 'Playing';
-  $('nowSubtitle').textContent = payload.artists || 'Music Share';
-  $('nowArt').src = payload.image || '';
-  toast('Playing.');
-  setTimeout(refreshPlaybackState, 700);
 }
 
 async function transportRequest(action) {

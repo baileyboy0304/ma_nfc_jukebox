@@ -176,27 +176,32 @@ class MusicAssistant:
         )
 
     # -- transport ------------------------------------------------------------ #
+    # All commands return None on success or a human-readable error message,
+    # so Music Assistant's own reason ("Player X is not available", "No
+    # playable items found", ...) reaches the UI instead of a generic failure.
 
-    async def play(self, player_id: str) -> bool:
-        return await self._safe(self._client.players.play, player_id) if self._client else False
+    NOT_CONNECTED = "Music Assistant is not connected."
 
-    async def pause(self, player_id: str) -> bool:
-        return await self._safe(self._client.players.pause, player_id) if self._client else False
+    async def play(self, player_id: str) -> Optional[str]:
+        return await self._safe(self._client.players.play, player_id) if self._client else self.NOT_CONNECTED
 
-    async def next(self, player_id: str) -> bool:
-        return await self._safe(self._client.players.next_track, player_id) if self._client else False
+    async def pause(self, player_id: str) -> Optional[str]:
+        return await self._safe(self._client.players.pause, player_id) if self._client else self.NOT_CONNECTED
 
-    async def previous(self, player_id: str) -> bool:
-        return await self._safe(self._client.players.previous_track, player_id) if self._client else False
+    async def next(self, player_id: str) -> Optional[str]:
+        return await self._safe(self._client.players.next_track, player_id) if self._client else self.NOT_CONNECTED
 
-    async def set_volume(self, player_id: str, volume_percent: int) -> bool:
+    async def previous(self, player_id: str) -> Optional[str]:
+        return await self._safe(self._client.players.previous_track, player_id) if self._client else self.NOT_CONNECTED
+
+    async def set_volume(self, player_id: str, volume_percent: int) -> Optional[str]:
         if not self._client:
-            return False
+            return self.NOT_CONNECTED
         return await self._safe(self._client.players.volume_set, player_id, int(volume_percent))
 
-    async def play_media(self, player_id: str, uri: str, start_item: Optional[str] = None) -> bool:
+    async def play_media(self, player_id: str, uri: str, start_item: Optional[str] = None) -> Optional[str]:
         """Replace the player's queue with the given Music Assistant media uri
-        and start playing.
+        and start playing. Returns None on success or an error message.
 
         ``uri`` is a Music Assistant media uri, e.g. ``spotify://playlist/<id>``
         or ``spotify://track/<id>`` -- MA resolves it via whichever Spotify
@@ -204,7 +209,7 @@ class MusicAssistant:
         This plays under MA's own Spotify account, not the guest's.
         """
         if not self._client:
-            return False
+            return self.NOT_CONNECTED
         from music_assistant_models.enums import QueueOption
         try:
             active = await self._client.player_queues.get_active_queue(player_id)
@@ -215,15 +220,15 @@ class MusicAssistant:
             await self._client.player_queues.play_media(
                 queue_id, uri, option=QueueOption.REPLACE, start_item=start_item,
             )
-            return True
+            return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("play_media failed for %s: %s", uri, exc)
-            return False
+            return str(exc) or "Playback could not start."
 
-    async def _safe(self, fn, *args) -> bool:
+    async def _safe(self, fn, *args) -> Optional[str]:
         try:
             await fn(*args)
-            return True
+            return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("Music Assistant command failed: %s", exc)
-            return False
+            return str(exc) or "Playback command failed."

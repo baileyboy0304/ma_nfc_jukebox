@@ -113,9 +113,16 @@ class Controller:
 
         uri = _to_ma_uri(context_uri or track_uri)
         start_item = _to_ma_uri(track_uri) if (context_uri and track_uri) else None
-        ok = await self.ma.play_media(player_id, uri, start_item=start_item)
-        if not ok:
-            raise AppError("Playback could not start.", 502)
+        error = await self.ma.play_media(player_id, uri, start_item=start_item)
+        if error:
+            # Playback runs through Music Assistant's OWN Spotify account, so a
+            # guest playlist that account can't see resolves to zero tracks.
+            if "no playable items" in error.lower():
+                error = (
+                    "The house music system can't access this playlist. "
+                    "It may be private -- ask the guest to make it public, or pick another playlist."
+                )
+            raise AppError(error, 502)
         return {"ok": True}
 
     async def transport(self, action, player_id):
@@ -129,9 +136,9 @@ class Controller:
             "next": self.ma.next, "previous": self.ma.previous,
             "pause": self.ma.pause, "resume": self.ma.play,
         }[action]
-        ok = await fn(player_id)
-        if not ok:
-            raise AppError("Playback control failed.", 502)
+        error = await fn(player_id)
+        if error:
+            raise AppError(error, 502)
         return {"ok": True}
 
     async def set_volume(self, player_id, volume_percent):
@@ -143,9 +150,9 @@ class Controller:
             volume = max(0, min(100, int(volume_percent)))
         except (TypeError, ValueError):
             raise AppError("Choose a valid volume.", 400)
-        ok = await self.ma.set_volume(player_id, volume)
-        if not ok:
-            raise AppError("Volume could not be changed.", 502)
+        error = await self.ma.set_volume(player_id, volume)
+        if error:
+            raise AppError(error, 502)
         return {"ok": True}
 
 
