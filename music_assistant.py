@@ -244,10 +244,33 @@ class MusicAssistant:
             await self._client.player_queues.play_media(
                 queue_id, uri, option=QueueOption.REPLACE, start_item=start_item,
             )
+            # Read the queue back and log what got built -- proves we loaded a
+            # full multi-track queue (not a single item) and surfaces the
+            # player's flow_mode, which is what governs whether it re-streams
+            # (and beeps) on track change. Fire-and-forget so it doesn't delay
+            # the play response.
+            asyncio.create_task(self._log_queue_state(queue_id))
             return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("play_media failed for %s (start_item=%s): %s", uri, start_item, exc)
             return str(exc) or "Playback could not start."
+
+    async def _log_queue_state(self, queue_id: str):
+        # The queue populates via events just after play_media returns; wait a
+        # beat before reading it.
+        await asyncio.sleep(1.5)
+        try:
+            items = await self._client.player_queues.get_queue_items(queue_id, limit=500)
+            queue = self._client.player_queues.get(queue_id)
+            current = getattr(queue, "current_item", None) if queue else None
+            logger.info(
+                "queue %s built: items=%d flow_mode=%s current=%r",
+                queue_id, len(items),
+                getattr(queue, "flow_mode", None) if queue else None,
+                getattr(current, "name", None) if current else None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("queue-state read failed for %s: %s", queue_id, exc)
 
     async def _safe(self, fn, *args) -> Optional[str]:
         try:
