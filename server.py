@@ -143,12 +143,16 @@ class Controller:
 
         error = await self.ma.play_media(player_id, media, start_item=start_item)
         if error:
-            # Playback runs through Music Assistant's OWN Spotify account, so a
-            # guest playlist/track that account can't see resolves to zero tracks.
+            # "No playable items found" just means MA resolved the media to zero
+            # tracks. Don't guess at why -- it has several unrelated causes (the
+            # track isn't in the playlist MA has cached, MA's Spotify provider
+            # session is unhealthy, the playlist isn't visible to the account MA
+            # authenticates as, region-unavailable tracks). Claiming "it's
+            # private" here was wrong often enough to be actively misleading.
             if "no playable items" in error.lower():
                 error = (
-                    "The house music system can't access this. "
-                    "It may be private -- ask the guest to make it public, or pick something else."
+                    "Music Assistant couldn't find anything playable in this. "
+                    "Check the add-on log for the Music Assistant error."
                 )
             raise AppError(error, 502)
         return {"ok": True}
