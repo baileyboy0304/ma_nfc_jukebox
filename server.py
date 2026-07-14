@@ -14,11 +14,25 @@ from urllib.parse import urlencode
 from quart import Quart, jsonify, make_response, redirect, render_template, request
 
 from config import RESOURCES_DIR, SERVER, SPOTIFY_RELAY_URL, VERSION
-from spotify import GuestStore, credentials_configured
+from spotify import STATE_TTL_SECONDS, GuestStore, credentials_configured
 
 logger = logging.getLogger(__name__)
 
 GUEST_COOKIE = "mnj_guest"
+
+
+def _spotify_error_text(reason: str) -> str:
+    """Turn Spotify's OAuth error code into something a guest can act on."""
+    if reason == "access_denied":
+        # Either the guest hit Cancel, or -- far more often -- the Spotify app is
+        # still in Development mode, which only permits accounts explicitly listed
+        # under "Users and Access" in the Spotify Developer Dashboard.
+        return (
+            "Spotify wouldn't allow this account. If you didn't press Cancel, this "
+            "Spotify app is in Development mode: the account has to be added under "
+            "'Users and Access' in the Spotify Developer Dashboard first."
+        )
+    return f"Spotify reported an error: {reason}"
 
 
 def _local_base(req) -> str:
@@ -201,7 +215,9 @@ def create_app(controller: Controller) -> Quart:
             return redirect("player?" + urlencode({"guest": cookie_guest}))
         if not credentials_configured():
             return await render_template("join_error.html", version=VERSION)
-        return await render_template("join.html", version=VERSION)
+        return await render_template(
+            "join.html", version=VERSION, error=request.args.get("error", ""),
+        )
 
     @app.route("/login-public")
     async def login_public():
@@ -217,14 +233,38 @@ def create_app(controller: Controller) -> Quart:
         state_data = controller.guests.pop_pending_state(args.get("state", ""))
         return_to = (state_data or {}).get("return_to", "player")
 
-        if "error" in args or not state_data or not args.get("code"):
-            return redirect("join")
+        # Each failure below logs its specific reason and tells the guest what
+        # happened. These used to share one silent redirect to /join, which made
+        # a failed login impossible to diagnose from either end.
+        if "error" in args:
+            reason = args.get("error", "")
+            logger.warning("Guest Spotify login rejected by Spotify: %s", reason)
+            return redirect("join?" + urlencode({"error": _spotify_error_text(reason)}))
+
+        if not state_data:
+            logger.warning(
+                "Guest Spotify login had no matching pending state (state=%r). The login was "
+                "not started here, was already used, took over %d minutes, or the add-on "
+                "restarted mid-login (pending logins are in memory).",
+                args.get("state", ""), STATE_TTL_SECONDS // 60,
+            )
+            return redirect("join?" + urlencode({
+                "error": "That login took too long or was already used. Please try again.",
+            }))
+
+        if not args.get("code"):
+            logger.warning("Guest Spotify login returned no authorization code.")
+            return redirect("join?" + urlencode({
+                "error": "Spotify didn't send a login code back. Please try again.",
+            }))
 
         try:
             guest = controller.guests.complete_login(args.get("code"), state_data)
-        except Exception:
-            logger.exception("Guest Spotify login failed")
-            return redirect("join")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Guest Spotify login failed while exchanging the code / reading the profile")
+            return redirect("join?" + urlencode({"error": f"Spotify login failed: {exc}"}))
+
+        logger.info("Guest connected: %s (%d playlists)", guest.get("display_name"), len(guest.get("playlists", [])))
 
         resp = redirect(return_to + "?" + urlencode({"guest": guest["id"]}))
         resp.set_cookie(GUEST_COOKIE, guest["id"], max_age=2592000, samesite="Lax")

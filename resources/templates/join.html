@@ -8,6 +8,9 @@
     <p class="subtitle">
       Choose the playlist access you're comfortable with. Playback runs through the room's Music Assistant setup, not your account.
     </p>
+    {% if error %}
+    <p class="soft-note error">{{ error }}</p>
+    {% endif %}
   </section>
 
   <section class="setup-grid">
